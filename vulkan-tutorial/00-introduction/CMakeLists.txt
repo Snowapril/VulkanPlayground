@@ -1,5 +1,5 @@
 # Target name
-set(target triangle)
+set(target introduction)
 
 file(GLOB_RECURSE headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB_RECURSE sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
@@ -31,10 +31,7 @@ target_link_libraries(${target}
     ${DEFAULT_LINKER_OPTIONS}
 	${DEFAULT_LIBRARIES}
     vulkan
+    glfw
     
     INTERFACE
 )
-
-# Install
-install(TARGETS ${target} DESTINATION lib)
-install(DIRECTORY ${header_dir} DESTINATION include)

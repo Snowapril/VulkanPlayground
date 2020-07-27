@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
     }        
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "01-triangle", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "00-introduction", nullptr, nullptr);
 
     unsigned int extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
