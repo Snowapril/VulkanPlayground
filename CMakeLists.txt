@@ -14,6 +14,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
 # Includes
+include_directories(Libraries)
+include_directories(Libraries/glm)
+include_directories(Libraries/glfw/include)
 include_directories(${VULKAN_SDK_PATH}/include)
 link_directories(${VULKAN_SDK_PATH}/lib)
 
@@ -31,4 +34,10 @@ include(Builds/CMake/CompileOptions.cmake)
 # Overrides
 set(CMAKE_MACOSX_RPATH ON)
 
+option(GLFW_USE_OSMESA "GLFW OSMesa for headless environment" OFF)
+if (GLFW_USE_OSMESA)
+    add_definitions(-DCUBBYFLOW_HEADLESS)
+endif()
+add_subdirectory(Libraries/glfw)
+add_subdirectory(Libraries/glm)
 add_subdirectory(vulkan-tutorial)
