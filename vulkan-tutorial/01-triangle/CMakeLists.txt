@@ -31,7 +31,7 @@ target_link_libraries(${target}
     ${DEFAULT_LINKER_OPTIONS}
 	${DEFAULT_LIBRARIES}
     vulkan
-    
+    glfw
     INTERFACE
 )
 
