@@ -48,6 +48,7 @@ void VulkanApp::InitVulkan()
 
     CreateInstance();
     SetDebugMessenger();
+    PickPhysicalDevice();
 }
 
 bool VulkanApp::CheckValidationLayerSupport()
@@ -143,6 +144,44 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::DebugCallback(
     return VK_FALSE;
 }
 
+void VulkanApp::PickPhysicalDevice()
+{
+    unsigned int deviceCount { 0 };
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0) 
+    {
+        throw std::runtime_error("Cannot find GPUs with Vulkan support");
+    }
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+    for (const auto& device : devices)
+    {
+        if (IsDeviceSuitable(device))
+        {
+            _physicalDevice = device;
+            break;
+        }
+    }
+
+    if (_physicalDevice == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("Failed to find suitable GPU");
+    }
+}
+
+bool VulkanApp::IsDeviceSuitable(VkPhysicalDevice device)
+{
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    //! dedicated graphics card and support for geometry shader.
+    return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+}
+
 VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -201,8 +240,8 @@ void VulkanApp::MainLoop()
 
 void VulkanApp::CleanUp()
 {
-    if (_instance) vkDestroyInstance(_instance, nullptr);
     if (_debugMessenger) DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+    if (_instance) vkDestroyInstance(_instance, nullptr);
     glfwDestroyWindow(_window);
     glfwTerminate();
 }

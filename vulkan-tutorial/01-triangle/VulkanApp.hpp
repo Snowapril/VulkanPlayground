@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <optional>
 
 class VulkanApp
 {
@@ -17,8 +18,13 @@ private:
     void CreateInstance();
     bool CheckValidationLayerSupport();
     void SetDebugMessenger();
-
+    void PickPhysicalDevice();
+    bool IsDeviceSuitable(VkPhysicalDevice device);
     std::vector<const char*> GetRequiredExtensions();
+
+    struct QueueFamilyIndices {
+        std::optional<
+    }
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
                 VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -32,5 +38,6 @@ private:
     const std::vector<const char*> _validationLayers { "VK_LAYER_KHRONOS_validation" };
     VkInstance _instance;
     VkDebugUtilsMessengerEXT _debugMessenger;
+    VkPhysicalDevice _physicalDevice { VK_NULL_HANDLE };
     bool _enableValidationLayers;
 };
