@@ -49,6 +49,44 @@ void VulkanApp::InitVulkan()
     CreateInstance();
     SetDebugMessenger();
     PickPhysicalDevice();
+    CreateLogicalDevice();
+}
+
+void VulkanApp::CreateLogicalDevice()
+{
+    QueueFamilyIndices indices = FindQueueFamilies(_physicalDevice);
+    VkDeviceQueueCreateInfo queueCreateInfo {};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    queueCreateInfo.queueCount = 1;
+    
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    VkPhysicalDeviceFeatures deviceFeatures {}; //! Set as VK_fALSE for all
+    VkDeviceCreateInfo createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.enabledExtensionCount = 0;
+    
+    if (_enableValidationLayers)
+    {
+        createInfo.enabledLayerCount = static_cast<unsigned int>(_validationLayers.size());
+        createInfo.ppEnabledLayerNames = _validationLayers.data();
+    }
+    else
+    {
+        createInfo.enabledLayerCount = 0;
+    }
+
+    if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create logical device");
+    }
+
+    vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
 }
 
 bool VulkanApp::CheckValidationLayerSupport()
@@ -146,7 +184,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::DebugCallback(
 
 void VulkanApp::PickPhysicalDevice()
 {
-    unsigned int deviceCount { 0 };
+    unsigned int deviceCount;
     vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
 
     if (deviceCount == 0) 
@@ -172,14 +210,45 @@ void VulkanApp::PickPhysicalDevice()
     }
 }
 
-bool VulkanApp::IsDeviceSuitable(VkPhysicalDevice device)
+VulkanApp::QueueFamilyIndices VulkanApp::FindQueueFamilies(VkPhysicalDevice device) 
 {
-    VkPhysicalDeviceProperties deviceProperties;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-    //! dedicated graphics card and support for geometry shader.
-    return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+    QueueFamilyIndices indices;
+
+    unsigned int queueFamilyCount { 0 };
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+    
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    unsigned int i = 0;
+    for (const auto& property : queueFamilies)
+    {
+        if (property.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            indices.graphicsFamily = i;
+        }
+
+        if (indices.IsComplete())
+            break;
+
+        ++i;
+    }
+
+    return indices;
+}
+
+bool VulkanApp::IsDeviceSuitable(VkPhysicalDevice device) 
+{
+    QueueFamilyIndices indices = FindQueueFamilies(device);
+
+    //VkPhysicalDeviceProperties deviceProperties;
+    //vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    //VkPhysicalDeviceFeatures deviceFeatures;
+    //vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    ////! dedicated graphics card and support for geometry shader.
+    //return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;
+
+    return indices.IsComplete();
 }
 
 VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -240,6 +309,7 @@ void VulkanApp::MainLoop()
 
 void VulkanApp::CleanUp()
 {
+    if (_device) vkDestroyDevice(_device, nullptr);
     if (_debugMessenger) DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
     if (_instance) vkDestroyInstance(_instance, nullptr);
     glfwDestroyWindow(_window);

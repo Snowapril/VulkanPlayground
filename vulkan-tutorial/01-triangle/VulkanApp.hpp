@@ -19,13 +19,20 @@ private:
     bool CheckValidationLayerSupport();
     void SetDebugMessenger();
     void PickPhysicalDevice();
-    bool IsDeviceSuitable(VkPhysicalDevice device);
     std::vector<const char*> GetRequiredExtensions();
 
     struct QueueFamilyIndices {
-        std::optional<
-    }
+        std::optional<unsigned int> graphicsFamily;
 
+        bool IsComplete() const {
+            return graphicsFamily.has_value();
+        };
+    };
+
+    QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
+
+    bool IsDeviceSuitable(VkPhysicalDevice device);
+    void CreateLogicalDevice();
     static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
                 VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                 VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -39,5 +46,7 @@ private:
     VkInstance _instance;
     VkDebugUtilsMessengerEXT _debugMessenger;
     VkPhysicalDevice _physicalDevice { VK_NULL_HANDLE };
+    VkDevice _device;
+    VkQueue _graphicsQueue;
     bool _enableValidationLayers;
 };
