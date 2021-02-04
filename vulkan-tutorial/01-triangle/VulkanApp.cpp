@@ -157,7 +157,7 @@ void VulkanApp::CreateInstance()
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
     if (_enableValidationLayers)
     {
-        createInfo.enabledLayerCount = _validationLayers.size();
+        createInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
         createInfo.ppEnabledLayerNames = _validationLayers.data();
         PopulateDebugMessengerCreateInfo(debugCreateInfo);
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
@@ -178,6 +178,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::DebugCallback(
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) 
 {
+    (void)pUserData;
+    (void)messageSeverity;
+    (void)messageType;
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
 }
@@ -298,8 +301,7 @@ void VulkanApp::SetDebugMessenger()
 
 void VulkanApp::MainLoop()
 {
-    int counter = 3;
-    while (glfwWindowShouldClose(_window) == GLFW_FALSE && counter--) 
+    while (glfwWindowShouldClose(_window) == GLFW_FALSE) 
     {
         glfwPollEvents();
         std::cout << "MainLoop" << std::endl;

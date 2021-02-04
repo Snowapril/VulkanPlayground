@@ -5,6 +5,8 @@
 int main(int argc, char* argv[])
 {
     VulkanApp app;
+    (void)argc;
+    (void)argv;
 
     try {
         app.Run(); 
