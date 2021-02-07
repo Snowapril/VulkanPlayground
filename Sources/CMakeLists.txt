@@ -62,7 +62,3 @@ target_link_libraries(${target}
     sdl2
     INTERFACE
 )
-
-# Install
-install(TARGETS ${target} DESTINATION lib)
-install(DIRECTORY ${header_dir} DESTINATION include)
