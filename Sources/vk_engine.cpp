@@ -44,6 +44,9 @@ void VulkanEngine::init()
 	//create the swapchian
 	init_swapchain();
 
+	//initialize the commands
+	init_commands();
+
 	//everything went fine
 	_isInitialized = true;
 }
@@ -82,6 +85,10 @@ void VulkanEngine::init_vulkan()
 	// Get the vkDevice handle used in the rest of a vulkan application
 	_device = vkbDevice.device;
 	_chosenGPU = physicalDevice.physical_device;
+
+	// use vkbootstrap to grabbing the queue
+	_graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
+	_graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 }
 
 void VulkanEngine::init_swapchain()
@@ -102,10 +109,25 @@ void VulkanEngine::init_swapchain()
 	_swapchainImageFormat = vkbSwapchain.image_format;
 }
 
+void VulkanEngine::init_commands()
+{
+	// create a command pool for commands submitted into the graphics queue
+	// we also want the pool to allow for resetting of individual command buffers
+	VkCommandPoolCreateInfo commandPoolInfo = vkinit::command_pool_create_info(_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	VK_CHECK(vkCreateCommandPool(_device, &commandPoolInfo, nullptr, &_commandPool));
+
+	// allocate the default buffer that will be used for rendering
+	VkCommandBufferAllocateInfo commandBufferInfo = vkinit::command_buffer_allocate_info(_commandPool, 1, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	VK_CHECK(vkAllocateCommandBuffers(_device, &commandBufferInfo, &_commandBuffer));
+}
+
 void VulkanEngine::cleanup()
 {	
+	// Queue and PhysicalDevice cannot be destroyed
+	// because they are not really created objects in this application.
 	if (_isInitialized) {
-		
+		vkDestroyCommandPool(_device, _commandPool, nullptr);
+
 		vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 		// no need to destroy vkImage because 
 		// it is owned and destroyed by swapchain.

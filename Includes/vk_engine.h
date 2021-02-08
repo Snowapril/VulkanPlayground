@@ -12,7 +12,7 @@ public:
 	bool _isInitialized{ false };
 	int _frameNumber {0};
 
-	VkExtent2D _windowExtent{ 1700 , 900 };
+	VkExtent2D _windowExtent{ 1200 , 900 };
 
 	struct SDL_Window* _window{ nullptr };
 	
@@ -26,6 +26,13 @@ public:
 	VkFormat _swapchainImageFormat; // image format expected by the window system.
 	std::vector<VkImage> _swapchainImages; // array of images from the swapchain
 	std::vector<VkImageView> _swapchainImageViews; // array of image views from the swap chain
+
+	VkQueue _graphicsQueue; // queue we will submit to
+	unsigned int _graphicsQueueFamily; //family of that queue
+
+	VkCommandPool _commandPool; //the common pool for our commands
+	VkCommandBuffer _commandBuffer; // the buffer we will record into
+
 
 	//initializes everything in the engine
 	void init();
@@ -42,4 +49,6 @@ private:
 	void init_vulkan();
 
 	void init_swapchain();
+
+	void init_commands();
 };
