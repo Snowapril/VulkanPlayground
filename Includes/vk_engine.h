@@ -33,6 +33,11 @@ public:
 	VkCommandPool _commandPool; //the common pool for our commands
 	VkCommandBuffer _commandBuffer; // the buffer we will record into
 
+	VkRenderPass _renderPass;
+	std::vector<VkFramebuffer> _framebuffers;
+
+	VkSemaphore _presentSemaphore, _renderSemaphore;
+	VkFence _renderFence;
 
 	//initializes everything in the engine
 	void init();
@@ -51,4 +56,10 @@ private:
 	void init_swapchain();
 
 	void init_commands();
+
+	void init_default_renderpass();
+
+	void init_framebuffers();
+
+	void init_sync_structures();
 };
