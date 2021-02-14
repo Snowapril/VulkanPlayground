@@ -102,7 +102,6 @@ add_subdirectory(Libraries/imgui)
 add_subdirectory(Libraries/tinyobjloader)
 add_subdirectory(Libraries/vkbootstrap)
 add_subdirectory(Libraries/volk)
-add_subdirectory(Sources)
 
 # find glslangValidator program
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
@@ -118,7 +117,7 @@ file(GLOB_RECURSE GLSL_SOURCE_FILES
 foreach(GLSL ${GLSL_SOURCE_FILES})
 	message(STATUS "Building Shader")
 	get_filename_component(FILE_NAME ${GLSL} NAME)
-	set(SPIRV "{RESOURCES_DIR}/shaders/${FILE_NAME}.spv")
+	set(SPIRV "${RESOURCES_DIR}/shaders/${FILE_NAME}.spv")
 	message(STATUS ${GLSL})
 	add_custom_command(
 		OUTPUT ${SPIRV}
@@ -129,6 +128,8 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
 endforeach(GLSL)
 
 add_custom_target(
-	Shaders
+	run ALL
 	DEPENDS ${SPIRV_BINARY_FILES}
 )
+
+add_subdirectory(Sources)

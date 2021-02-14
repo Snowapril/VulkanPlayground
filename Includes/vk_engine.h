@@ -39,6 +39,9 @@ public:
 	VkSemaphore _presentSemaphore, _renderSemaphore;
 	VkFence _renderFence;
 
+	VkPipelineLayout _trianglePipelineLayout;
+	VkPipeline _trianglePipeline;
+
 	//initializes everything in the engine
 	void init();
 
@@ -50,6 +53,8 @@ public:
 
 	//run main loop
 	void run();
+
+	bool load_shader_module(const char* filepath, VkShaderModule* outShaderModule);
 private:
 	void init_vulkan();
 
@@ -62,4 +67,23 @@ private:
 	void init_framebuffers();
 
 	void init_sync_structures();
+
+	void init_pipelines();
+};
+
+class PipelineBuilder
+{
+public:
+	std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+	VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
+	VkPipelineInputAssemblyStateCreateInfo _inputAssemblyInfo;
+	VkViewport _viewport;
+	VkRect2D _scissor;
+	VkPipelineRasterizationStateCreateInfo _rasterizationInfo;
+	VkPipelineColorBlendAttachmentState _colorBlendAttachment;
+	VkPipelineMultisampleStateCreateInfo _multisamplingInfo;
+	VkPipelineLayout _pipelineLayout;
+
+	VkPipeline build_pipeline(VkDevice device, VkRenderPass renderPass);
+private:
 };

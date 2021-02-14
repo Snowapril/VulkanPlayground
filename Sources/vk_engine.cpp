@@ -10,6 +10,7 @@
 #include <VkBootstrap.h>
 
 #include <iostream>
+#include <fstream>
 
 #define VK_CHECK(x) \
 	do \
@@ -55,6 +56,9 @@ void VulkanEngine::init()
 
 	//init sync structures
 	init_sync_structures();
+
+	//init pipelines
+	init_pipelines();
 
 	//everything went fine
 	_isInitialized = true;
@@ -222,12 +226,129 @@ void VulkanEngine::init_sync_structures()
 	VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &_presentSemaphore));
 }
 
+void VulkanEngine::init_pipelines()
+{
+	VkShaderModule triangleFragShader;
+	if (!load_shader_module(RESOURCES_DIR "/shaders/triangle.frag.spv", &triangleFragShader))
+	{
+		std::cerr << "Error when building the triangle fragment shader module" << std::endl;
+	}
+	else
+	{
+		std::cout << "triangle fragment shader module successfully loaded" << std::endl;
+	}
+
+	VkShaderModule triangleVertShader;
+	if (!load_shader_module(RESOURCES_DIR "/shaders/triangle.vert.spv", &triangleVertShader))
+	{
+		std::cerr << "Error when building the triangle vertex shader module" << std::endl;
+	}
+	else
+	{
+		std::cout << "triangle vertex shader module successfully loaded" << std::endl;
+	}
+
+	//! build the pipeline layout that controls the inputs/outputs of the shader.
+	//! we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+	VkPipelineLayoutCreateInfo layout_info = vkinit::pipeline_layout_create_info();
+	VK_CHECK(vkCreatePipelineLayout(_device, &layout_info, nullptr, &_trianglePipelineLayout));
+
+	//! build the stage crate-info for both vertex and fragment stages. This let the pipeline know the shader modules per stage.
+	PipelineBuilder pipeline_builder;
+
+	pipeline_builder._shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, triangleVertShader));
+	pipeline_builder._shaderStages.push_back(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, triangleFragShader));
+
+	//! vertex input controls how to read vertices from vertex buffers. we aren't using it yet.
+	pipeline_builder._vertexInputInfo = vkinit::pipeline_vertex_input_create_info();
+
+	//! input assembly is the configuration for drawing triangle lists, strips, or individual points.
+	//! we are just going to draw triangle list.
+	pipeline_builder._inputAssemblyInfo = vkinit::pipeline_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+	//! build viewport and scissor from the swapchain extents.
+	pipeline_builder._viewport.x = 0.0f;
+	pipeline_builder._viewport.y = 0.0f;
+	pipeline_builder._viewport.width  = static_cast<float>(_windowExtent.width);
+	pipeline_builder._viewport.height = static_cast<float>(_windowExtent.height);
+	pipeline_builder._viewport.minDepth = 0.0f;
+	pipeline_builder._viewport.maxDepth = 1.0f;
+	pipeline_builder._scissor.offset = { 0, 0 };
+	pipeline_builder._scissor.extent = _windowExtent;
+
+	//! configure the rasterizer to draw filled triangle
+	pipeline_builder._rasterizationInfo = vkinit::pipeline_rasterization_create_info(VK_POLYGON_MODE_FILL);
+
+	//! we dont use multisampling, so just run the default one.
+	pipeline_builder._multisamplingInfo = vkinit::pipeline_multisample_create_info();
+
+	//! a single blend attachment with no blending and writing to RGBA.
+	pipeline_builder._colorBlendAttachment = vkinit::color_blend_attachment_state();
+
+	//! use the triangle layout we created
+	pipeline_builder._pipelineLayout = _trianglePipelineLayout;
+
+	//! finally build the pipeline
+	_trianglePipeline = pipeline_builder.build_pipeline(_device, _renderPass);
+
+	vkDestroyShaderModule(_device, triangleVertShader, nullptr);
+	vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+}
+
+bool VulkanEngine::load_shader_module(const char* filepath, VkShaderModule* outShaderModule)
+{
+	std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+	
+	if (!file.is_open())
+	{
+		return false;
+	}
+
+	//! find the what the size of the file is by looking up the location of the cursor
+	//! because the cursor is at the end, it gives the size directly by bytes.
+	size_t fileSize = static_cast<size_t>(file.tellg());
+
+	//! spirv expect the buffer to be on uint32, so make sure to reserve an int vector big enough for the entires file
+	std::vector<unsigned int> buffer(fileSize / sizeof(unsigned int));
+
+	//! put file cursor at beginning
+	file.seekg(0);
+
+	//! load the entire file into the buffer
+	file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
+
+	//! now that file is loaded into the buffer, we can close it.
+	file.close();
+
+	//! create a new shader module, using the buffer we loaded.
+	VkShaderModuleCreateInfo shaderCreateInfo = {};
+	shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderCreateInfo.pNext = nullptr;
+
+	//! code size has to be in bytes, so multiply the ints in the buffer by size of int to know real size of the buffer
+	shaderCreateInfo.codeSize = buffer.size() * sizeof(unsigned int);
+	shaderCreateInfo.pCode = buffer.data();
+
+	//! check that the creation goes well
+	VkShaderModule shaderModule;
+	if (vkCreateShaderModule(_device, &shaderCreateInfo, nullptr, &shaderModule) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	*outShaderModule = shaderModule;
+	return true;
+}
+
 void VulkanEngine::cleanup()
 {	
 	// Queue and PhysicalDevice cannot be destroyed
 	// because they are not really created objects in this application.
 	if (_isInitialized) {
 		vkDeviceWaitIdle(_device);
+		
+		vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
+		vkDestroyPipeline(_device, _trianglePipeline, nullptr);
 
 		vkDestroyFence(_device, _renderFence, nullptr);
 		vkDestroySemaphore(_device, _renderSemaphore, nullptr);
@@ -304,6 +425,9 @@ void VulkanEngine::draw()
 
 	vkCmdBeginRenderPass(_commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+	vkCmdBindPipeline(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+	vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
+
 	//! finalize the render pass
 	vkCmdEndRenderPass(_commandBuffer);
 	//! finalize the command buffer (we can no longer add commands, but it can now be executed)
@@ -373,3 +497,58 @@ void VulkanEngine::run()
 	}
 }
 
+VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass renderPass)
+{
+	//! make viewport state from our stored viewport and scissor
+	//! at the moment we won't support multiple viewports or scissors
+	VkPipelineViewportStateCreateInfo viewport_info = {};
+	viewport_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewport_info.pNext = nullptr;
+
+	viewport_info.viewportCount = 1;
+	viewport_info.pViewports = &_viewport;
+	viewport_info.scissorCount = 1;
+	viewport_info.pScissors = &_scissor;
+
+	//! setup dummy color blending. we aren't using transparent objects yet.
+	//! the blending is just "no blend", but we do writing to the color attachment.
+	VkPipelineColorBlendStateCreateInfo color_blending_info = {};
+	color_blending_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	color_blending_info.pNext = nullptr;
+
+	color_blending_info.logicOpEnable = VK_FALSE;
+	color_blending_info.logicOp = VK_LOGIC_OP_COPY;
+	color_blending_info.attachmentCount = 1;
+	color_blending_info.pAttachments = &_colorBlendAttachment;
+
+	//! build the actual pipeline
+	//! we now use all of the info structures we have been writing into this one to create the pipeline.
+	VkGraphicsPipelineCreateInfo pipeline_info = {};
+	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipeline_info.pNext = nullptr;
+
+	pipeline_info.stageCount = _shaderStages.size();
+	pipeline_info.pStages = _shaderStages.data();
+	pipeline_info.pVertexInputState = &_vertexInputInfo;
+	pipeline_info.pInputAssemblyState = &_inputAssemblyInfo;
+	pipeline_info.pViewportState = &viewport_info;
+	pipeline_info.pRasterizationState = &_rasterizationInfo;
+	pipeline_info.pMultisampleState = &_multisamplingInfo;
+	pipeline_info.pColorBlendState = &color_blending_info;
+	pipeline_info.layout = _pipelineLayout;
+	pipeline_info.renderPass = renderPass;
+	pipeline_info.subpass = 0;
+	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+
+	//! it is easy to error out on create graphics pipeline, so we handle it a bit better than the VK_CHECK case
+	VkPipeline pipeline;
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS)
+	{
+		std::cerr << "Failed to create pipeline" << std::endl;
+		return VK_NULL_HANDLE;
+	}
+	else
+	{
+		return pipeline;
+	}
+}
