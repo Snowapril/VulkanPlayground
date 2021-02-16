@@ -5,8 +5,10 @@
 
 #include <vector>
 #include <vk_types.h>
+#include <vk_mesh.h>
 #include <functional>
 #include <deque>
+#include <glm/glm.hpp>
 
 struct DeletionQueue
 {
@@ -26,6 +28,12 @@ struct DeletionQueue
 
 		deletors.clear();
 	}
+};
+
+struct MeshPushConstants
+{
+	glm::vec4 data;
+	glm::mat4 render_matrix;
 };
 
 class VulkanEngine {
@@ -67,6 +75,13 @@ public:
 
 	DeletionQueue _mainDeletionQueue;
 
+	VmaAllocator _allocator;
+
+	VkPipeline _meshPipeline;
+	Mesh _triangleMesh;
+
+	VkPipelineLayout _meshPipelineLayout;
+
 	int _selectedShader { 0 };
 
 	//initializes everything in the engine
@@ -96,6 +111,10 @@ private:
 	void init_sync_structures();
 
 	void init_pipelines();
+
+	void load_meshes();
+
+	void upload_mesh(Mesh& mesh);
 };
 
 class PipelineBuilder
