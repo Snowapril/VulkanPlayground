@@ -138,4 +138,57 @@ namespace vkinit {
 
 		return layout_info;
 	}
+
+	VkImageCreateInfo image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+	{
+		VkImageCreateInfo image_info = {};
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_info.pNext = nullptr;
+
+		image_info.imageType = VK_IMAGE_TYPE_2D;
+		image_info.format = format;
+		image_info.extent = extent;
+
+		image_info.mipLevels = 1;
+		image_info.arrayLayers = 1;
+		image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image_info.usage = usageFlags;
+
+		return image_info;
+	}
+
+	VkImageViewCreateInfo vkinit::image_view_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
+	{
+		VkImageViewCreateInfo image_view_info = {};
+		image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_info.pNext = nullptr;
+
+		image_view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		image_view_info.image = image;
+		image_view_info.format = format;
+		image_view_info.subresourceRange.baseArrayLayer = 0;
+		image_view_info.subresourceRange.baseMipLevel = 0;
+		image_view_info.subresourceRange.levelCount = 1;
+		image_view_info.subresourceRange.layerCount = 1;
+		image_view_info.subresourceRange.aspectMask = aspectFlags;
+
+		return image_view_info;
+	}
+	
+	VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
+	{
+		VkPipelineDepthStencilStateCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+		info.pNext = nullptr;
+
+		info.depthTestEnable = bDepthTest;
+		info.depthWriteEnable = bDepthWrite;
+		info.depthCompareOp = bDepthTest ? compareOp : VK_COMPARE_OP_ALWAYS;
+		info.minDepthBounds = 0.0f;
+		info.maxDepthBounds = 1.0f;
+		info.stencilTestEnable = VK_FALSE;
+		
+		return info;
+	}
 };
