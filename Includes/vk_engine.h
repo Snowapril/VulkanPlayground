@@ -79,8 +79,13 @@ public:
 
 	VkPipeline _meshPipeline;
 	Mesh _triangleMesh;
+	Mesh _monkeyMesh;
 
 	VkPipelineLayout _meshPipelineLayout;
+
+	VkImageView _depthImageView;
+	AllocatedImage _depthImage;
+	VkFormat _depthFormat;
 
 	int _selectedShader { 0 };
 
