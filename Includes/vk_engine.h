@@ -3,12 +3,28 @@
 
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 #include <vk_types.h>
 #include <vk_mesh.h>
 #include <functional>
 #include <deque>
 #include <glm/glm.hpp>
+
+//! Note that we store the VkPipeline and layout by value, not by pointer
+//! They are 64 bit handles to internal driver structures anyway so storing pointer to them isn't very useful
+struct Material
+{
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject
+{
+	Mesh* mesh;
+	Material* material;
+	glm::mat4 modelMatrix;
+};
 
 struct DeletionQueue
 {
@@ -87,6 +103,10 @@ public:
 	AllocatedImage _depthImage;
 	VkFormat _depthFormat;
 
+	std::vector<RenderObject> _renderables;
+	std::unordered_map<std::string, Material> _materials;
+	std::unordered_map<std::string, Mesh> _meshes;
+
 	int _selectedShader { 0 };
 
 	//initializes everything in the engine
@@ -119,7 +139,15 @@ private:
 
 	void load_meshes();
 
+	void init_scene();
+
 	void upload_mesh(Mesh& mesh);
+
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout pipelineLayout, const std::string& name);
+	Material* get_material(const std::string& name);
+	Mesh* get_mesh(const std::string& name);
+
+	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
 };
 
 class PipelineBuilder

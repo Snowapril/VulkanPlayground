@@ -73,6 +73,10 @@ void VulkanEngine::init()
 	//load meshes
 	load_meshes();
 
+	//init scene
+	init_scene();
+
+
 	//everything went fine
 	_isInitialized = true;
 }
@@ -173,6 +177,7 @@ void VulkanEngine::init_swapchain()
 
 	_mainDeletionQueue.push_function([=]() {
 		vkDestroyImageView(_device, _depthImageView, nullptr);
+		vmaDestroyImage(_allocator, _depthImage._image, _depthImage._allocation);
 		vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 	});
 }
@@ -476,6 +481,8 @@ void VulkanEngine::init_pipelines()
 	pipeline_builder._pipelineLayout = _meshPipelineLayout;
 	_meshPipeline = pipeline_builder.build_pipeline(_device, _renderPass);
 
+	create_material(_meshPipeline, _meshPipelineLayout, "defaultmesh");
+
 	vkDestroyShaderModule(_device, coloredTriangleVertShader, nullptr);
 	vkDestroyShaderModule(_device, coloredTriangleFragShader, nullptr);
 	vkDestroyShaderModule(_device, triangleVertShader, nullptr);
@@ -489,6 +496,31 @@ void VulkanEngine::init_pipelines()
 		vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
 		vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
 	});
+}
+
+void VulkanEngine::init_scene()
+{
+	RenderObject monkey;
+	monkey.material = get_material("defaultmesh");
+	monkey.mesh = get_mesh("monkey");
+	monkey.modelMatrix = glm::mat4(1.0f);
+
+	_renderables.push_back(monkey);
+
+	for (int x = -20; x <= 20; x++) 
+	{
+		for (int y = -20; y <= 20; y++) 
+		{
+			RenderObject tri;
+			tri.mesh = get_mesh("triangle");
+			tri.material = get_material("defaultmesh");
+			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x, 0, y));
+			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(0.2, 0.2, 0.2));
+			tri.modelMatrix = translation * scale;
+
+			_renderables.push_back(tri);
+		}
+	}
 }
 
 bool VulkanEngine::load_shader_module(const char* filepath, VkShaderModule* outShaderModule)
@@ -552,10 +584,13 @@ void VulkanEngine::load_meshes()
 	_triangleMesh._vertices[2].color = { 0.f, 1.f, 0.0f }; //pure green
 
 	//load the monkey
-	_monkeyMesh.load_from_obj(RESOURCES_DIR "/objects/monkey_smooth.obj");
+	_monkeyMesh.load_from_obj(RESOURCES_DIR "/objects/suzanne.obj");
 
 	upload_mesh(_triangleMesh);
 	upload_mesh(_monkeyMesh);
+
+	_meshes["monkey"] = _monkeyMesh;
+	_meshes["triangle"] = _triangleMesh;
 }
 
 void VulkanEngine::upload_mesh(Mesh& mesh)
@@ -587,6 +622,80 @@ void VulkanEngine::upload_mesh(Mesh& mesh)
 	vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
 	std::memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
 	vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+}
+
+Material* VulkanEngine::create_material(VkPipeline pipeline, VkPipelineLayout pipelineLayout, const std::string& name)
+{
+	Material mat;
+	mat.pipeline = pipeline;
+	mat.pipelineLayout = pipelineLayout;
+	_materials[name] = mat;
+	return &_materials[name];
+}
+
+Material* VulkanEngine::get_material(const std::string& name)
+{
+	//search for the object, and return nullpointer if not found
+	auto it = _materials.find(name);
+	if (it == _materials.end()) {
+		return nullptr;
+	}
+	else {
+		return &(*it).second;
+	}
+}
+
+Mesh* VulkanEngine::get_mesh(const std::string& name)
+{
+	//search for the object, and return nullpointer if not found
+	auto it = _meshes.find(name);
+	if (it == _meshes.end()) {
+		return nullptr;
+	}
+	else {
+		return &(*it).second;
+	}
+}
+
+void VulkanEngine::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count)
+{
+	//! make a model view matrix for rendering the object.
+	//! camera view
+	glm::vec3 camPos = { 0.0f, -6.0f, -10.0f };
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
+	glm::mat4 projection = glm::perspective(glm::radians(70.0f), 1700.0f / 900.0f, 0.1f, 200.0f);
+	projection[1][1] *= -1;
+
+	Mesh* last_mesh = nullptr;
+	Material* last_material = nullptr;
+
+	for (int i = 0; i < count; ++i)
+	{
+		RenderObject& obj = first[i];
+
+		//! Only bind the pipeline if it does not match with the already bound one
+		if (obj.material != last_material)
+		{
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, obj.material->pipeline);
+			last_material = obj.material;
+		}
+
+		glm::mat4 model = obj.modelMatrix;
+		glm::mat4 mesh_matrix = projection * view * model;
+		MeshPushConstants pushConstants;
+		pushConstants.render_matrix = mesh_matrix;
+
+		vkCmdPushConstants(cmd, obj.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &pushConstants);
+
+		//! only bind the mesh if it is a different one from last bind
+		if (obj.mesh != last_mesh)
+		{
+			VkDeviceSize offset = 0;
+			vkCmdBindVertexBuffers(cmd, 0, 1, &obj.mesh->_vertexBuffer._buffer, &offset);
+			last_mesh = obj.mesh;
+		}
+		vkCmdDraw(cmd, obj.mesh->_vertices.size(), 1, 0, 0);
+	}
 }
 
 void VulkanEngine::cleanup()
@@ -662,34 +771,7 @@ void VulkanEngine::draw()
 
 	vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
-
-	//! Bind the mesh vertex buffer with offset 0
-	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(cmd, 0, 1, &_monkeyMesh._vertexBuffer._buffer, &offset);
-
-	//! make a model view matrix for the object rendering.
-	//! camera position
-	glm::vec3 camPos = { 0.0f, 0.0f, -2.0f };
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), camPos);
-
-	//! camera projection
-	glm::mat4 projection = glm::perspective(glm::radians(70.0f), static_cast<float>(_windowExtent.width) / _windowExtent.height, 0.1f, 200.0f);
-
-	//! model rotation
-	glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(_frameNumber * 0.4f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	//! calculate the final mesh matrix
-	glm::mat4 mvp = projection * view * model;
-
-	MeshPushConstants constants;
-	constants.render_matrix = mvp;
-
-	//! upload the matrix to the GPU via push constants
-	vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
-
-	//! We can now draw the mesh
-	vkCmdDraw(cmd, _monkeyMesh._vertices.size(), 1, 0, 0);
+	draw_objects(cmd, _renderables.data(), _renderables.size());
 
 	//! finalize the render pass
 	vkCmdEndRenderPass(_commandBuffer);
