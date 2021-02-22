@@ -52,6 +52,15 @@ struct MeshPushConstants
 	glm::mat4 render_matrix;
 };
 
+struct FrameData
+{
+	VkSemaphore _presentSemaphore, _renderSemaphore;
+	VkFence _renderFence;
+
+	VkCommandPool _commandPool;
+	VkCommandBuffer _mainCommandBuffer;
+};
+
 class VulkanEngine {
 public:
 
@@ -76,14 +85,8 @@ public:
 	VkQueue _graphicsQueue; // queue we will submit to
 	unsigned int _graphicsQueueFamily; //family of that queue
 
-	VkCommandPool _commandPool; //the common pool for our commands
-	VkCommandBuffer _commandBuffer; // the buffer we will record into
-
 	VkRenderPass _renderPass;
 	std::vector<VkFramebuffer> _framebuffers;
-
-	VkSemaphore _presentSemaphore, _renderSemaphore;
-	VkFence _renderFence;
 
 	VkPipelineLayout _trianglePipelineLayout;
 	VkPipeline _trianglePipeline;
@@ -106,6 +109,13 @@ public:
 	std::vector<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
+
+	static constexpr unsigned int kFrameOverlap = 2;
+	//! frame storage
+	FrameData _frames[kFrameOverlap];
+
+	//! getter for the frame we are rendering to right now
+	FrameData& get_current_frame();
 
 	int _selectedShader { 0 };
 
