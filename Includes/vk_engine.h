@@ -52,6 +52,13 @@ struct MeshPushConstants
 	glm::mat4 render_matrix;
 };
 
+struct GPUCameraData
+{
+	glm::mat4 view;
+	glm::mat4 projection;
+	glm::mat4 viewProj;
+};
+
 struct FrameData
 {
 	VkSemaphore _presentSemaphore, _renderSemaphore;
@@ -59,6 +66,11 @@ struct FrameData
 
 	VkCommandPool _commandPool;
 	VkCommandBuffer _mainCommandBuffer;
+
+	//! Buffer that holds a single GPUCameraData to use when rendering
+	AllocatedBuffer cameraBuffer;
+	
+	VkDescriptorSet globalDescriptor;
 };
 
 class VulkanEngine {
@@ -106,6 +118,9 @@ public:
 	AllocatedImage _depthImage;
 	VkFormat _depthFormat;
 
+	VkDescriptorSetLayout _globalSetLayout;
+	VkDescriptorPool _descriptorPool;
+
 	std::vector<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
@@ -152,6 +167,10 @@ private:
 	void init_scene();
 
 	void upload_mesh(Mesh& mesh);
+
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags flags, VmaMemoryUsage usage);
+
+	void init_descriptors();
 
 	Material* create_material(VkPipeline pipeline, VkPipelineLayout pipelineLayout, const std::string& name);
 	Material* get_material(const std::string& name);
