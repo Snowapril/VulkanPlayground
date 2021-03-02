@@ -59,6 +59,20 @@ struct GPUCameraData
 	glm::mat4 viewProj;
 };
 
+struct GPUSceneData
+{
+	glm::vec4 fogColor; //! w is for exponent
+	glm::vec4 fogDistances; //! x for min, y for max, zw unused.
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection; //! w for power
+	glm::vec4 sunlightColor;
+}; //! 80 bytes with alignment.
+
+struct GPUObjectData
+{
+	glm::mat4 modelMatrix;
+};
+
 struct FrameData
 {
 	VkSemaphore _presentSemaphore, _renderSemaphore;
@@ -69,8 +83,10 @@ struct FrameData
 
 	//! Buffer that holds a single GPUCameraData to use when rendering
 	AllocatedBuffer cameraBuffer;
-	
+	AllocatedBuffer objectBuffer;
+
 	VkDescriptorSet globalDescriptor;
+	VkDescriptorSet objectDescriptor;
 };
 
 class VulkanEngine {
@@ -86,6 +102,7 @@ public:
 	VkInstance _instance; //vulkan library handle
 	VkDebugUtilsMessengerEXT _debug_messenger; // vulkan debug output handle
 	VkPhysicalDevice _chosenGPU; // GPU chosen as the default device
+	VkPhysicalDeviceProperties _gpuProperties;
 	VkDevice _device; // vulkan device for commands
 	VkSurfaceKHR _surface; // vulkan window surface
 
@@ -119,11 +136,15 @@ public:
 	VkFormat _depthFormat;
 
 	VkDescriptorSetLayout _globalSetLayout;
+	VkDescriptorSetLayout _objectSetLayout;
 	VkDescriptorPool _descriptorPool;
 
 	std::vector<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
+
+	GPUSceneData _sceneParameters;
+	AllocatedBuffer _sceneParameterBuffer;
 
 	static constexpr unsigned int kFrameOverlap = 2;
 	//! frame storage
@@ -167,6 +188,8 @@ private:
 	void init_scene();
 
 	void upload_mesh(Mesh& mesh);
+
+	size_t pad_uniform_buffer_size(size_t originalSize);
 
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags flags, VmaMemoryUsage usage);
 

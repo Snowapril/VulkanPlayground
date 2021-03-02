@@ -191,4 +191,31 @@ namespace vkinit {
 		
 		return info;
 	}
+
+	VkDescriptorSetLayoutBinding vkinit::descriptor_layout_binding(VkDescriptorType type, VkShaderStageFlags stageFlags, unsigned int binding)
+	{
+		VkDescriptorSetLayoutBinding setBind = {};
+		setBind.stageFlags = stageFlags;
+		setBind.binding = binding;
+		setBind.descriptorType = type;
+		setBind.descriptorCount = 1;
+		setBind.pImmutableSamplers = nullptr;
+
+		return setBind;
+	}
+
+	VkWriteDescriptorSet vkinit::write_descriptor_buffer(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorBufferInfo* bufferInfo, unsigned int binding)
+	{
+		VkWriteDescriptorSet writeSet = {};
+		writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeSet.pNext = nullptr;
+
+		writeSet.dstBinding = binding;
+		writeSet.dstSet = dstSet;
+		writeSet.descriptorCount = 1;
+		writeSet.descriptorType = type;
+		writeSet.pBufferInfo = bufferInfo;
+
+		return writeSet;
+	}
 };
