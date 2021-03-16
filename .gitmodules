@@ -1,0 +1,3 @@
+[submodule "Libraries/openxr-hpp"]
+	path = Libraries/openxr-hpp
+	url = https://github.com/KhronosGroup/OpenXR-Hpp
