@@ -17,6 +17,7 @@ struct Material
 {
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+	VkDescriptorSet textureSet { VK_NULL_HANDLE };
 };
 
 struct RenderObject
@@ -71,6 +72,18 @@ struct GPUSceneData
 struct GPUObjectData
 {
 	glm::mat4 modelMatrix;
+};
+
+struct Texture
+{
+	AllocatedImage image;
+	VkImageView imageView;
+};
+
+struct UploadContext
+{
+	VkFence _uploadFence;
+	VkCommandPool _commandPool;
 };
 
 struct FrameData
@@ -137,11 +150,14 @@ public:
 
 	VkDescriptorSetLayout _globalSetLayout;
 	VkDescriptorSetLayout _objectSetLayout;
+	VkDescriptorSetLayout _singleTextureLayout;
 	VkDescriptorPool _descriptorPool;
 
 	std::vector<RenderObject> _renderables;
 	std::unordered_map<std::string, Material> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
+
+	UploadContext _uploadContext;
 
 	GPUSceneData _sceneParameters;
 	AllocatedBuffer _sceneParameterBuffer;
@@ -155,6 +171,8 @@ public:
 
 	int _selectedShader { 0 };
 
+	std::unordered_map<std::string, Texture> _loadedTextures;
+
 	//initializes everything in the engine
 	void init();
 
@@ -167,7 +185,10 @@ public:
 	//run main loop
 	void run();
 
+	void immeidate_submit(std::function<void(VkCommandBuffer)>&& function);
+
 	bool load_shader_module(const char* filepath, VkShaderModule* outShaderModule);
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags flags, VmaMemoryUsage usage);
 private:
 	void init_vulkan();
 
@@ -183,6 +204,8 @@ private:
 
 	void init_pipelines();
 
+	void load_images();
+
 	void load_meshes();
 
 	void init_scene();
@@ -191,7 +214,6 @@ private:
 
 	size_t pad_uniform_buffer_size(size_t originalSize);
 
-	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags flags, VmaMemoryUsage usage);
 
 	void init_descriptors();
 

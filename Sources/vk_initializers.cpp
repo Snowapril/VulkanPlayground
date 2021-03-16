@@ -32,7 +32,7 @@ namespace vkinit {
 
 		return commandBufferInfo;
 	}
-	
+
 	VkPipelineShaderStageCreateInfo vkinit::pipeline_shader_stage_create_info(VkShaderStageFlagBits stage, VkShaderModule shaderModule)
 	{
 		VkPipelineShaderStageCreateInfo shader_info = {};
@@ -60,7 +60,7 @@ namespace vkinit {
 
 		return vertex_input_info;
 	}
-	
+
 	VkPipelineInputAssemblyStateCreateInfo vkinit::pipeline_input_assembly_create_info(VkPrimitiveTopology topology)
 	{
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
@@ -112,14 +112,14 @@ namespace vkinit {
 
 		return multisample_info;
 	}
-	
+
 	VkPipelineColorBlendAttachmentState vkinit::color_blend_attachment_state()
 	{
 		VkPipelineColorBlendAttachmentState color_blend_attachment = {};
 		color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-												VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 		color_blend_attachment.blendEnable = VK_FALSE;
-		
+
 		return color_blend_attachment;
 	}
 
@@ -175,7 +175,7 @@ namespace vkinit {
 
 		return image_view_info;
 	}
-	
+
 	VkPipelineDepthStencilStateCreateInfo vkinit::depth_stencil_create_info(bool bDepthTest, bool bDepthWrite, VkCompareOp compareOp)
 	{
 		VkPipelineDepthStencilStateCreateInfo info = {};
@@ -188,7 +188,7 @@ namespace vkinit {
 		info.minDepthBounds = 0.0f;
 		info.maxDepthBounds = 1.0f;
 		info.stencilTestEnable = VK_FALSE;
-		
+
 		return info;
 	}
 
@@ -218,4 +218,33 @@ namespace vkinit {
 
 		return writeSet;
 	}
-};
+
+	VkSamplerCreateInfo vkinit::sampler_create_info(VkFilter filters, VkSamplerAddressMode samplerAddressMode)
+	{
+		VkSamplerCreateInfo sampler_info = {};
+		sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sampler_info.pNext = nullptr;
+		sampler_info.minFilter = filters;
+		sampler_info.magFilter = filters;
+		sampler_info.addressModeU = samplerAddressMode;
+		sampler_info.addressModeV = samplerAddressMode;
+		sampler_info.addressModeW = samplerAddressMode;
+
+		return sampler_info;
+	}
+
+	VkWriteDescriptorSet vkinit::write_descriptor_image(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo* imageInfo, unsigned int binding)
+	{
+		VkWriteDescriptorSet writeSet = {};
+		writeSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeSet.pNext = nullptr;
+
+		writeSet.dstBinding = binding;
+		writeSet.dstSet = dstSet;
+		writeSet.descriptorCount = 1;
+		writeSet.descriptorType = type;
+		writeSet.pImageInfo = imageInfo;
+
+		return writeSet;
+	}
+}
